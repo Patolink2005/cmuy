@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getDayData, NUTRITION_PLAN } from './data';
-import { supabase } from './supabaseClient'; // Importamos el cliente de Supabase
+import { supabase } from './lib/supabase'; // Importamos el cliente centralizado
 
 // El hook ahora necesita el 'user' para saber a quién pertenece el progreso.
 export function usePlan(user) {
@@ -45,8 +45,8 @@ export function usePlan(user) {
     // El `checks` para el día actual se deriva del estado general.
     const checks = dailyChecks[currentDayNum - 1];
 
-    // 2. La función de actualización ahora guarda en Supabase.
-    const setChecks = useCallback((update) => {
+    // 2. La función de actualización guarda en Supabase.
+    const setChecks = useCallback(async (update) => {
         const newChecksForDay = typeof update === 'function' ? update(checks) : update;
 
         // Actualiza el estado local inmediatamente para una UI fluida.
@@ -56,8 +56,21 @@ export function usePlan(user) {
             return newDailyChecks;
         });
 
-        // Aquí iría la lógica para guardar en Supabase (upsert)
-        // Esto se puede optimizar para que no se llame en cada cambio menor.
+        // Guardar en Supabase (upsert)
+        if (user) {
+            const { error } = await supabase
+                .from('user_progress')
+                .upsert({
+                    user_id: user.id,
+                    day_num: currentDayNum,
+                    workout_completed: newChecksForDay.workout,
+                    protein_met: newChecksForDay.protein,
+                    knee_status: newChecksForDay.knee,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id, day_num' });
+
+            if (error) console.error("Error al guardar progreso:", error);
+        }
     }, [currentDayNum, checks, user]);
 
     const dayData = useMemo(() => getDayData(currentDayNum), [currentDayNum]);

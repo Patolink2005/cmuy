@@ -22,46 +22,12 @@ import {
   User as UserIcon,
   Loader2
 } from 'lucide-react'; // Asegúrate que Login no se importe aquí
-import { PROGRAM_DATA } from './data'; // Asumiendo que este es el archivo correcto
-import { useAuth } from './Auth'; // Importamos nuestro nuevo hook
+import { PROGRAM_DATA, BONUS_TIPS } from './data';
+import { useAuth } from './Auth';
+import { usePlan } from './usePlan';
+import { Timer } from './Timer';
 
-const NUTRITION_PLAN = {
-  FUERZA: { carb: 'ALTO', meals: { breakfast: 'Huevos con palta. Carga de energía.', lunch: 'Pollo con arroz/papa + Brócoli.', dinner: 'Carne con pasta/papa. Recuperación.' } },
-  HIIT: { carb: 'BAJO', meals: { breakfast: 'Huevos revueltos. Grasas saludables.', lunch: 'Pescado + Vegetales ligeros.', dinner: 'Proteína magra + Ensalada verde.' } },
-  MIXTO: { carb: 'MEDIO', meals: { breakfast: 'Huevos + Almendras.', lunch: 'Carne + Vegetales mixtos + Dosis pequeña carbo.', dinner: 'Pescado graso + Vegetales verdes.' } }
-};
-
-const BONUS_TIPS = [
-  "BPA y Plásticos: Evita botellas de plástico, son xenoestrógenos.",
-  "Soja y Linaza: En exceso pueden alterar tu balance de testosterona.",
-  "Alcohol: La cerveza favorece la aromatización (estrogenización)."
-];
-
-function Timer() {
-  const [seconds, setSeconds] = useState(60);
-  const [isActive, setIsActive] = useState(false);
-  useEffect(() => {
-    let interval = null;
-    if (isActive && seconds > 0) interval = setInterval(() => setSeconds(s => s - 1), 1000);
-    else if (seconds === 0) { setIsActive(false); clearInterval(interval); }
-    return () => clearInterval(interval);
-  }, [isActive, seconds]);
-  const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-  return (
-    <div className="flex items-center gap-4 bg-tactical-grey-light p-3 rounded border border-tactical-gold/20">
-      <TimerIcon className={isActive ? "text-neon-green" : "text-tactical-gold"} size={20} />
-      <span className="text-2xl font-mono font-bold w-16 text-center">{formatTime(seconds)}</span>
-      <div className="flex gap-2 shrink-0">
-        <button onClick={() => setIsActive(!isActive)} className="bg-military-olive text-white px-4 py-1.5 text-[10px] font-black uppercase rounded shadow-lg active:scale-95 transition-all">
-          {isActive ? 'PAUSA' : 'INICIAR'}
-        </button>
-        <button onClick={() => { setSeconds(60); setIsActive(false); }} className="p-2 text-text-dim hover:white transition-colors">
-          <RotateCcw size={16} />
-        </button>
-      </div>
-    </div>
-  );
-}
+// El componente Timer se importa externamente
 
 function ExerciseCard({ ex, idx }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -114,12 +80,24 @@ function ExerciseCard({ ex, idx }) {
 }
 
 function App() {
-  const { user, signOut } = useAuth(); // Obtenemos el usuario y la función signOut del contexto
-  const [currentDayNum, setCurrentDayNum] = useState(1);
-  const [isWorkoutDone, setIsWorkoutDone] = useState(false);
+  const { user, signOut } = useAuth();
+  const { 
+    currentDayNum, 
+    setCurrentDayNum, 
+    checks, 
+    setChecks, 
+    dayData, 
+    currentNutrition, 
+    totalProgress, 
+    loading 
+  } = usePlan(user);
+
   const [showBriefing, setShowBriefing] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
   const [showDaySelector, setShowDaySelector] = useState(false);
+
+  const isWorkoutDone = checks.workout;
+  const setIsWorkoutDone = (val) => setChecks(prev => ({ ...prev, workout: val }));
 
   // La lógica de "si no hay usuario, muestra Login" se moverá a main.jsx
 
@@ -127,12 +105,16 @@ function App() {
     await signOut();
   };
 
-  const dayData = PROGRAM_DATA.find(d => d.dayNum === currentDayNum) || PROGRAM_DATA[0];
-  const currentNutrition = NUTRITION_PLAN[dayData.type] || NUTRITION_PLAN['MIXTO'];
-  const totalProgress = ((currentDayNum - 1 + (isWorkoutDone ? 1 : 0)) / 21) * 100;
+  const nextDay = () => { if (currentDayNum < 21) { setCurrentDayNum(v => v + 1); window.scrollTo(0, 0); } };
+  const prevDay = () => { if (currentDayNum > 1) { setCurrentDayNum(v => v - 1); window.scrollTo(0, 0); } };
 
-  const nextDay = () => { if (currentDayNum < 21) { setCurrentDayNum(v => v + 1); setIsWorkoutDone(false); window.scrollTo(0, 0); } };
-  const prevDay = () => { if (currentDayNum > 1) { setCurrentDayNum(v => v - 1); setIsWorkoutDone(false); window.scrollTo(0, 0); } };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-tactical-black flex items-center justify-center">
+        <Loader2 className="animate-spin text-neon-green" size={48} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-24 bg-tactical-black text-white font-['Inter'] selection:bg-military-olive/30 overflow-x-hidden">
@@ -174,7 +156,7 @@ function App() {
         {showDaySelector && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed inset-0 top-[88px] z-[70] bg-tactical-black p-4 grid grid-cols-4 gap-2 overflow-y-auto pb-32">
             {PROGRAM_DATA.map(d => (
-              <button key={d.dayNum} onClick={() => { setCurrentDayNum(d.dayNum); setShowDaySelector(false); setIsWorkoutDone(false); window.scrollTo(0, 0); }}
+              <button key={d.dayNum} onClick={() => { setCurrentDayNum(d.dayNum); setShowDaySelector(false); window.scrollTo(0, 0); }}
                 className={`aspect-square flex items-center justify-center rounded font-black text-sm border transition-all ${d.dayNum === currentDayNum ? 'bg-tactical-gold text-black border-tactical-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]' : d.dayNum < currentDayNum ? 'border-neon-green/30 text-neon-green/50' : 'border-white/10 text-white/20'}`}>
                 {d.dayNum}
               </button>

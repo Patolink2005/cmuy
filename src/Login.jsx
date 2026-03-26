@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './lib/supabase';
 import { Loader2 } from 'lucide-react';
 
 export default function Login() {
@@ -14,12 +14,9 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const authMethod = isSignUp ? supabase.auth.signUp : supabase.auth.signInWithPassword;
-
-    const { error } = await authMethod({
-      email: email,
-      password: password,
-    });
+    const { error } = isSignUp
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);

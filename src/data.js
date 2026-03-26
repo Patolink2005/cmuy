@@ -1,3 +1,19 @@
+export const NUTRITION_PLAN = {
+  FUERZA: { carb: 'ALTO', meals: { breakfast: 'Huevos con palta. Carga de energía.', lunch: 'Pollo con arroz/papa + Brócoli.', dinner: 'Carne con pasta/papa. Recuperación.' } },
+  HIIT: { carb: 'BAJO', meals: { breakfast: 'Huevos revueltos. Grasas saludables.', lunch: 'Pescado + Vegetales ligeros.', dinner: 'Proteína magra + Ensalada verde.' } },
+  MIXTO: { carb: 'MEDIO', meals: { breakfast: 'Huevos + Almendras.', lunch: 'Carne + Vegetales mixtos + Dosis pequeña carbo.', dinner: 'Pescado graso + Vegetales verdes.' } }
+};
+
+export const BONUS_TIPS = [
+  "BPA y Plásticos: Evita botellas de plástico, son xenoestrógenos.",
+  "Soja y Linaza: En exceso pueden alterar tu balance de testosterona.",
+  "Alcohol: La cerveza favorece la aromatización (estrogenización)."
+];
+
+export function getDayData(dayNum) {
+  return PROGRAM_DATA.find(d => d.dayNum === dayNum) || PROGRAM_DATA[0];
+}
+
 export const PROGRAM_DATA = [
   {
     "id": "day-1",
